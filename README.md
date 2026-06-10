@@ -80,6 +80,43 @@ The API runs at: `http://localhost:3000`
 
 ---
 
+## ⚡ Quickstart (Docker — Recommended)
+
+```bash
+git clone https://github.com/gargieesingh/multi-tenant-system
+cd multi-tenant-system
+docker-compose up
+```
+
+That's it. The API is live at `http://localhost:3000` with migrations run and test data seeded.
+
+No PostgreSQL installation needed.
+
+---
+
+## 🧪 Running Tests
+
+```bash
+npm test
+```
+
+Tests cover:
+- Auth (register, login, JWT validation)
+- RBAC isolation (admin cannot access other org, member cannot access other project)
+- Unauthenticated access returns 401 not 403
+
+### Access Control Matrix (verified by tests)
+
+| Action                              | SUPERADMIN | ADMIN (own org) | ADMIN (other org) | MEMBER (own project) | MEMBER (other project) |
+|-------------------------------------|------------|-----------------|-------------------|----------------------|------------------------|
+| GET /organizations                  | ✅ 200     | ❌ 403          | ❌ 403            | ❌ 403               | ❌ 403                 |
+| GET /organizations/:orgId           | ✅ 200     | ✅ 200          | ❌ 403            | ❌ 403               | ❌ 403                 |
+| GET /projects                       | ✅ 200     | ❌ 403          | ❌ 403            | ❌ 403               | ❌ 403                 |
+| GET /projects/org/:orgId            | ✅ 200     | ✅ 200          | ❌ 403            | ❌ 403               | ❌ 403                 |
+| GET /projects/:projectId            | ✅ 200     | ✅ 200          | ❌ 403            | ✅ 200               | ❌ 403                 |
+
+---
+
 ## 🔐 Role System
 
 | Role | Permissions |
