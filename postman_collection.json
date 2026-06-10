@@ -1,0 +1,542 @@
+{
+  "info": {
+    "name": "Multi-Tenant System API",
+    "_postman_id": "multi-tenant-system-v1",
+    "description": "Complete API collection for the Multi-Tenant REST API. Demonstrates authentication, RBAC enforcement, and org/project isolation.\n\n**Setup:**\n1. Run `npm run seed` to populate test data\n2. Use the Login requests to auto-populate tokens\n3. Run folders in order: Auth → Organizations → Projects → Members",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3000", "type": "string" },
+    { "key": "superadminToken", "value": "", "type": "string" },
+    { "key": "adminAlphaToken", "value": "", "type": "string" },
+    { "key": "adminBetaToken", "value": "", "type": "string" },
+    { "key": "memberAlphaToken", "value": "", "type": "string" },
+    { "key": "orgAlphaId", "value": "", "type": "string" },
+    { "key": "orgBetaId", "value": "", "type": "string" },
+    { "key": "projectAlphaId", "value": "", "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "1. Auth",
+      "item": [
+        {
+          "name": "Register New User",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/auth/register", "host": ["{{baseUrl}}"], "path": ["api", "auth", "register"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"New User\",\n  \"email\": \"newuser@example.com\",\n  \"password\": \"password123\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Response has user', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.data).to.have.property('user');",
+                  "  pm.expect(body.data.user).to.not.have.property('password');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login as Superadmin",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api", "auth", "login"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"super@admin.com\",\n  \"password\": \"super123\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Token saved', () => {",
+                  "  const token = pm.response.json().data.token;",
+                  "  pm.expect(token).to.be.a('string');",
+                  "  pm.collectionVariables.set('superadminToken', token);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login as Admin (Org Alpha)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api", "auth", "login"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@alpha.com\",\n  \"password\": \"admin123\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "const token = pm.response.json().data.token;",
+                  "pm.collectionVariables.set('adminAlphaToken', token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login as Admin (Org Beta)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api", "auth", "login"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@beta.com\",\n  \"password\": \"admin123\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "const token = pm.response.json().data.token;",
+                  "pm.collectionVariables.set('adminBetaToken', token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login as Member (Org Alpha)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api", "auth", "login"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"member@alpha.com\",\n  \"password\": \"member123\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "const token = pm.response.json().data.token;",
+                  "pm.collectionVariables.set('memberAlphaToken', token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get My Profile (Superadmin)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{superadminToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/auth/me", "host": ["{{baseUrl}}"], "path": ["api", "auth", "me"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('No password in response', () => {",
+                  "  pm.expect(pm.response.json().data.user).to.not.have.property('password');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get My Profile — No Token (❌ 401)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/auth/me", "host": ["{{baseUrl}}"], "path": ["api", "auth", "me"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Should be unauthorized', () => { pm.expect(pm.response.code).to.equal(401); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2. Organizations",
+      "item": [
+        {
+          "name": "Create Organization [SUPERADMIN ✅]",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{superadminToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/organizations", "host": ["{{baseUrl}}"], "path": ["api", "organizations"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"New Test Org\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get All Organizations [SUPERADMIN ✅]",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{superadminToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/organizations", "host": ["{{baseUrl}}"], "path": ["api", "organizations"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Save org IDs', () => {",
+                  "  const orgs = pm.response.json().data;",
+                  "  const alpha = orgs.find(o => o.name === 'Org Alpha');",
+                  "  const beta = orgs.find(o => o.name === 'Org Beta');",
+                  "  if (alpha) pm.collectionVariables.set('orgAlphaId', alpha.id);",
+                  "  if (beta) pm.collectionVariables.set('orgBetaId', beta.id);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get All Organizations [ADMIN ❌ 403]",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminAlphaToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/organizations", "host": ["{{baseUrl}}"], "path": ["api", "organizations"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Should be forbidden', () => { pm.expect(pm.response.code).to.equal(403); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Org Alpha [Admin Alpha ✅ own org]",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminAlphaToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/organizations/{{orgAlphaId}}", "host": ["{{baseUrl}}"], "path": ["api", "organizations", "{{orgAlphaId}}"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Org Beta [Admin Alpha ❌ 403 cross-org]",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminAlphaToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/organizations/{{orgBetaId}}", "host": ["{{baseUrl}}"], "path": ["api", "organizations", "{{orgBetaId}}"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Should be forbidden', () => { pm.expect(pm.response.code).to.equal(403); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Org Alpha [SUPERADMIN ✅ any org]",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{superadminToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/organizations/{{orgAlphaId}}", "host": ["{{baseUrl}}"], "path": ["api", "organizations", "{{orgAlphaId}}"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3. Projects",
+      "item": [
+        {
+          "name": "Get All Projects [SUPERADMIN ✅]",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{superadminToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/projects", "host": ["{{baseUrl}}"], "path": ["api", "projects"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Save project Alpha ID', () => {",
+                  "  const projects = pm.response.json().data;",
+                  "  const alpha = projects.find(p => p.name === 'Project Alpha');",
+                  "  if (alpha) pm.collectionVariables.set('projectAlphaId', alpha.id);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get All Projects [ADMIN ❌ 403]",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminAlphaToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/projects", "host": ["{{baseUrl}}"], "path": ["api", "projects"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Should be forbidden', () => { pm.expect(pm.response.code).to.equal(403); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Projects in Org Alpha [Admin Alpha ✅]",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminAlphaToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/projects/org/{{orgAlphaId}}", "host": ["{{baseUrl}}"], "path": ["api", "projects", "org", "{{orgAlphaId}}"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Projects in Org Beta [Admin Alpha ❌ 403]",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminAlphaToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/projects/org/{{orgBetaId}}", "host": ["{{baseUrl}}"], "path": ["api", "projects", "org", "{{orgBetaId}}"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Should be forbidden', () => { pm.expect(pm.response.code).to.equal(403); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Project Alpha [Member Alpha ✅ is a member]",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{memberAlphaToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/projects/{{projectAlphaId}}", "host": ["{{baseUrl}}"], "path": ["api", "projects", "{{projectAlphaId}}"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Project [ADMIN ✅]",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminAlphaToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/projects", "host": ["{{baseUrl}}"], "path": ["api", "projects"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"New Project\",\n  \"description\": \"Created by admin\",\n  \"organizationId\": \"{{orgAlphaId}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Project [MEMBER ❌ 403]",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{memberAlphaToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/projects", "host": ["{{baseUrl}}"], "path": ["api", "projects"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Unauthorized Project\",\n  \"organizationId\": \"{{orgAlphaId}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Should be forbidden', () => { pm.expect(pm.response.code).to.equal(403); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4. Project Members",
+      "item": [
+        {
+          "name": "Add Member to Project [ADMIN ✅]",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminAlphaToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/projects/{{projectAlphaId}}/members", "host": ["{{baseUrl}}"], "path": ["api", "projects", "{{projectAlphaId}}", "members"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"<replace-with-user-id>\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200 or 201', () => {",
+                  "  pm.expect([200, 201]).to.include(pm.response.code);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Remove Member from Project [ADMIN ✅]",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminAlphaToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/projects/{{projectAlphaId}}/members/<userId>", "host": ["{{baseUrl}}"], "path": ["api", "projects", "{{projectAlphaId}}", "members", "<userId>"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Add Member [MEMBER ❌ 403]",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{memberAlphaToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/projects/{{projectAlphaId}}/members", "host": ["{{baseUrl}}"], "path": ["api", "projects", "{{projectAlphaId}}", "members"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"<replace-with-user-id>\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Should be forbidden', () => { pm.expect(pm.response.code).to.equal(403); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
