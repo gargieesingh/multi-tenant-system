@@ -99,7 +99,7 @@ describe('SUPERADMIN access', () => {
       .get('/api/organizations')
       .set('Authorization', `Bearer ${superadminToken}`);
     expect(res.status).toBe(200);
-    expect(res.body.data.length).toBeGreaterThanOrEqual(2);
+    expect(res.body.data.organizations.length).toBeGreaterThanOrEqual(2);
   });
 
   test('can GET all projects', async () => {
